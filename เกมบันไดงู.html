@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เกมบันไดงู - ระบบย่อยอาหาร</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Prompt', sans-serif; }
+    
+    @keyframes bounce-dice {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.1) rotate(-5deg); }
+      50% { transform: scale(0.95) rotate(5deg); }
+      75% { transform: scale(1.05) rotate(-3deg); }
+    }
+    
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+      50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.8); }
+    }
+    
+    @keyframes snake-wiggle {
+      0%, 100% { transform: rotate(-2deg); }
+      50% { transform: rotate(2deg); }
+    }
+    
+    .animate-bounce-dice { animation: bounce-dice 0.6s ease-in-out; }
+    .animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
+    .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    .animate-snake { animation: snake-wiggle 1s ease-in-out infinite; }
+    
+    .board-cell {
+      transition: all 0.3s ease;
+    }
+    
+    .board-cell:hover {
+      transform: scale(1.05);
+    }
+    
+    .player-token {
+      transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 overflow-auto">
+  <div id="app" class="w-full min-h-full flex items-center justify-center p-4"><!-- Screen 1: Player Selection -->
+   <div id="screen-select" class="text-center animate-slide-up">
+    <div class="mb-8">
+     <h1 id="main-title" class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400 mb-4 drop-shadow-lg">🐍 เกมบันไดงู 🪜</h1>
+     <p class="text-xl text-emerald-200 font-medium">ทดสอบความรู้ระบบย่อยอาหาร</p>
+    </div>
+    <div class="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20">
+     <h2 class="text-2xl font-bold text-white mb-6">เลือกจำนวนผู้เล่น</h2>
+     <div class="flex flex-wrap justify-center gap-4"><button onclick="selectPlayers(2)" class="group px-8 py-4 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"> <span class="text-3xl block mb-1">👥</span> 2 คน </button> <button onclick="selectPlayers(3)" class="group px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"> <span class="text-3xl block mb-1">👥</span> 3 คน </button> <button onclick="selectPlayers(4)" class="group px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"> <span class="text-3xl block mb-1">👥</span> 4 คน </button>
+     </div>
+    </div>
+   </div><!-- Screen 2: Name Input -->
+   <div id="screen-names" class="hidden text-center animate-slide-up w-full max-w-md">
+    <div class="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20">
+     <h2 class="text-3xl font-bold text-white mb-6">📝 ลงชื่อผู้เล่น</h2>
+     <div id="name-inputs" class="space-y-4 mb-6"></div><button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"> 🎮 เริ่มเกม! </button>
+    </div>
+   </div><!-- Screen 3: Game Board -->
+   <div id="screen-game" class="hidden w-full max-w-4xl animate-slide-up">
+    <div class="text-center mb-4">
+     <h1 id="game-title" class="text-3xl font-bold text-yellow-300 mb-2">🐍 เกมบันไดงู 🪜</h1>
+     <div id="current-player" class="text-xl text-white font-semibold"></div>
+    </div>
+    <div class="flex flex-col lg:flex-row gap-4"><!-- Game Board -->
+     <div class="flex-1">
+      <div id="game-board" class="grid grid-cols-5 gap-1 bg-white/10 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-white/20"></div>
+     </div><!-- Side Panel -->
+     <div class="lg:w-64 space-y-4"><!-- Players Status -->
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+       <h3 class="text-lg font-bold text-white mb-3">🏆 ผู้เล่น</h3>
+       <div id="players-status" class="space-y-2"></div>
+      </div><!-- Dice -->
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-center">
+       <div id="dice" class="text-6xl mb-3 cursor-pointer transform hover:scale-110 transition-transform" onclick="rollDice()">
+        🎲
+       </div>
+       <div id="dice-result" class="text-2xl font-bold text-yellow-300 mb-3">
+        กดเพื่อทอยลูกเต๋า
+       </div><button id="roll-btn" onclick="rollDice()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300"> 🎲 ทอยลูกเต๋า </button>
+      </div>
+     </div>
+    </div>
+   </div><!-- Question Modal -->
+   <div id="question-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border-2 border-purple-400 animate-slide-up">
+     <div class="text-center mb-4"><span id="question-icon" class="text-5xl">❓</span>
+      <h3 class="text-2xl font-bold text-white mt-2">คำถามพิเศษ!</h3>
+     </div>
+     <p id="question-text" class="text-lg text-white text-center mb-6 leading-relaxed"></p>
+     <div id="answer-options" class="space-y-3"></div>
+     <div id="answer-result" class="hidden mt-4 p-4 rounded-xl text-center"></div>
+    </div>
+   </div><!-- Winner Modal -->
+   <div id="winner-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-pulse-glow text-center">
+     <div class="text-7xl mb-4">
+      🏆
+     </div>
+     <h2 id="winner-text" class="text-3xl font-extrabold text-white mb-4"></h2>
+     <p id="win-message" class="text-xl text-yellow-100 mb-6">ยินดีด้วย! คุณเป็นผู้ชนะ!</p><button onclick="resetGame()" class="px-8 py-4 bg-white text-amber-600 text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"> 🔄 เล่นใหม่ </button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Game State
+    let playerCount = 0;
+    let players = [];
+    let currentPlayerIndex = 0;
+    let isRolling = false;
+    let gameStarted = false;
+
+    // Config
+    const defaultConfig = {
+      game_title: '🐍 เกมบันไดงู 🪜',
+      win_message: 'ยินดีด้วย! คุณเป็นผู้ชนะ!'
+    };
+    let config = { ...defaultConfig };
+
+    // Player colors
+    const playerColors = [
+      { bg: 'bg-red-500', text: 'text-red-500', emoji: '🔴' },
+      { bg: 'bg-blue-500', text: 'text-blue-500', emoji: '🔵' },
+      { bg: 'bg-green-500', text: 'text-green-500', emoji: '🟢' },
+      { bg: 'bg-yellow-500', text: 'text-yellow-500', emoji: '🟡' }
+    ];
+
+    // Special cells (ladders and snakes)
+    const ladders = { 3: 11, 6: 17, 9: 18, 14: 22 };
+    const snakes = { 16: 4, 19: 8, 24: 13, 21: 12 };
+
+    // Questions about digestive system
+    const questions = [
+      {
+        q: "อวัยวะใดเป็นจุดเริ่มต้นของระบบย่อยอาหาร?",
+        options: ["กระเพาะอาหาร", "ปาก", "ลำไส้เล็ก", "หลอดอาหาร"],
+        correct: 1
+      },
+      {
+        q: "เอนไซม์อะไมเลสทำหน้าที่ย่อยสารอาหารชนิดใด?",
+        options: ["โปรตีน", "ไขมัน", "แป้ง", "วิตามิน"],
+        correct: 2
+      },
+      {
+        q: "การดูดซึมสารอาหารส่วนใหญ่เกิดขึ้นที่อวัยวะใด?",
+        options: ["กระเพาะอาหาร", "ลำไส้เล็ก", "ลำไส้ใหญ่", "ตับ"],
+        correct: 1
+      },
+      {
+        q: "ตับอ่อนผลิตเอนไซม์ชนิดใดเพื่อย่อยโปรตีน?",
+        options: ["ลิเปส", "อะไมเลส", "ทริปซิน", "เปปซิน"],
+        correct: 2
+      },
+      {
+        q: "น้ำดีผลิตจากอวัยวะใด?",
+        options: ["ตับ", "ตับอ่อน", "ถุงน้ำดี", "กระเพาะอาหาร"],
+        correct: 0
+      },
+      {
+        q: "ลำไส้ใหญ่มีหน้าที่หลักอะไร?",
+        options: ["ย่อยโปรตีน", "ดูดซึมน้ำ", "ผลิตเอนไซม์", "ย่อยไขมัน"],
+        correct: 1
+      },
+      {
+        q: "กรดไฮโดรคลอริกในกระเพาะอาหารมีหน้าที่อะไร?",
+        options: ["ย่อยแป้ง", "ฆ่าเชื้อโรคและย่อยโปรตีน", "ดูดซึมวิตามิน", "ผลิตน้ำดี"],
+        correct: 1
+      },
+      {
+        q: "วิลลัส (Villi) พบได้ที่อวัยวะใด?",
+        options: ["กระเพาะอาหาร", "ลำไส้เล็ก", "ลำไส้ใหญ่", "หลอดอาหาร"],
+        correct: 1
+      },
+      {
+        q: "การบีบตัวของระบบย่อยอาหารเรียกว่าอะไร?",
+        options: ["ดิฟฟิวชัน", "เพอริสตัลซิส", "ออสโมซิส", "แอ็กทีฟทรานสปอร์ต"],
+        correct: 1
+      },
+      {
+        q: "อวัยวะใดไม่ได้เป็นส่วนหนึ่งของทางเดินอาหาร?",
+        options: ["หลอดอาหาร", "ตับ", "กระเพาะอาหาร", "ลำไส้เล็ก"],
+        correct: 1
+      }
+    ];
+
+    // Initialize SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange: async (newConfig) => {
+          config = { ...defaultConfig, ...newConfig };
+          updateUI();
+        },
+        mapToCapabilities: (cfg) => ({
+          recolorables: [],
+          borderables: [],
+          fontEditable: undefined,
+          fontSizeable: undefined
+        }),
+        mapToEditPanelValues: (cfg) => new Map([
+          ['game_title', cfg.game_title || defaultConfig.game_title],
+          ['win_message', cfg.win_message || defaultConfig.win_message]
+        ])
+      });
+    }
+
+    function updateUI() {
+      const mainTitle = document.getElementById('main-title');
+      const gameTitle = document.getElementById('game-title');
+      const winMsg = document.getElementById('win-message');
+      
+      if (mainTitle) mainTitle.textContent = config.game_title;
+      if (gameTitle) gameTitle.textContent = config.game_title;
+      if (winMsg) winMsg.textContent = config.win_message;
+    }
+
+    function selectPlayers(count) {
+      playerCount = count;
+      document.getElementById('screen-select').classList.add('hidden');
+      document.getElementById('screen-names').classList.remove('hidden');
+      
+      const container = document.getElementById('name-inputs');
+      container.innerHTML = '';
+      
+      for (let i = 0; i < count; i++) {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-3';
+        div.innerHTML = `
+          <span class="text-3xl">${playerColors[i].emoji}</span>
+          <input type="text" id="player-${i}" placeholder="ผู้เล่น ${i + 1}" 
+            class="flex-1 px-4 py-3 bg-white/20 border-2 border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 text-lg">
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function startGame() {
+      players = [];
+      for (let i = 0; i < playerCount; i++) {
+        const input = document.getElementById(`player-${i}`);
+        const name = input.value.trim() || `ผู้เล่น ${i + 1}`;
+        players.push({
+          name,
+          position: 0,
+          color: playerColors[i]
+        });
+      }
+      
+      currentPlayerIndex = 0;
+      gameStarted = true;
+      
+      document.getElementById('screen-names').classList.add('hidden');
+      document.getElementById('screen-game').classList.remove('hidden');
+      
+      renderBoard();
+      updatePlayersStatus();
+      updateCurrentPlayer();
+    }
+
+    function renderBoard() {
+      const board = document.getElementById('game-board');
+      board.innerHTML = '';
+      
+      // Board layout: rows alternate direction (like real snakes and ladders)
+      const rows = [
+        [25, 24, 23, 22, 21],
+        [16, 17, 18, 19, 20],
+        [15, 14, 13, 12, 11],
+        [6, 7, 8, 9, 10],
+        [5, 4, 3, 2, 1],
+        [0]
+      ];
+      
+      rows.forEach((row, rowIndex) => {
+        row.forEach(cellNum => {
+          const cell = document.createElement('div');
+          const isLadderStart = ladders[cellNum] !== undefined;
+          const isSnakeStart = snakes[cellNum] !== undefined;
+          const isSpecial = isLadderStart || isSnakeStart;
+          
+          let bgClass = 'bg-gradient-to-br from-emerald-600 to-teal-700';
+          let specialIcon = '';
+          
+          if (cellNum === 25) {
+            bgClass = 'bg-gradient-to-br from-yellow-400 to-amber-500';
+            specialIcon = '🏆';
+          } else if (cellNum === 0) {
+            bgClass = 'bg-gradient-to-br from-green-500 to-emerald-600';
+            specialIcon = '🚀';
+          } else if (isLadderStart) {
+            bgClass = 'bg-gradient-to-br from-blue-500 to-indigo-600';
+            specialIcon = '🪜';
+          } else if (isSnakeStart) {
+            bgClass = 'bg-gradient-to-br from-red-500 to-rose-600';
+            specialIcon = '🐍';
+          }
+          
+          cell.className = `board-cell ${bgClass} rounded-lg p-1 min-h-[50px] flex flex-col items-center justify-center relative border-2 border-white/20 ${cellNum === 0 ? 'col-span-5' : ''}`;
+          cell.id = `cell-${cellNum}`;
+          
+          cell.innerHTML = `
+            <span class="text-xs font-bold text-white/80">${cellNum}</span>
+            ${specialIcon ? `<span class="text-lg ${isSnakeStart ? 'animate-snake' : ''}">${specialIcon}</span>` : ''}
+            <div id="tokens-${cellNum}" class="flex flex-wrap gap-1 mt-1 justify-center"></div>
+          `;
+          
+          board.appendChild(cell);
+        });
+      });
+      
+      updateTokenPositions();
+    }
+
+    function updateTokenPositions() {
+      // Clear all tokens first
+      for (let i = 0; i <= 25; i++) {
+        const tokenContainer = document.getElementById(`tokens-${i}`);
+        if (tokenContainer) tokenContainer.innerHTML = '';
+      }
+      
+      // Place player tokens
+      players.forEach((player, index) => {
+        const tokenContainer = document.getElementById(`tokens-${player.position}`);
+        if (tokenContainer) {
+          const token = document.createElement('span');
+          token.className = 'player-token text-lg';
+          token.textContent = player.color.emoji;
+          token.title = player.name;
+          tokenContainer.appendChild(token);
+        }
+      });
+    }
+
+    function updatePlayersStatus() {
+      const container = document.getElementById('players-status');
+      container.innerHTML = '';
+      
+      players.forEach((player, index) => {
+        const div = document.createElement('div');
+        const isActive = index === currentPlayerIndex;
+        div.className = `flex items-center gap-2 p-2 rounded-xl ${isActive ? 'bg-white/20 ring-2 ring-yellow-400' : 'bg-white/5'}`;
+        div.innerHTML = `
+          <span class="text-xl">${player.color.emoji}</span>
+          <span class="text-white font-medium flex-1 truncate">${player.name}</span>
+          <span class="text-yellow-300 font-bold">${player.position}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateCurrentPlayer() {
+      const current = players[currentPlayerIndex];
+      document.getElementById('current-player').innerHTML = `
+        <span class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full">
+          ${current.color.emoji} ตาของ: <span class="font-bold text-yellow-300">${current.name}</span>
+        </span>
+      `;
+    }
+
+    function rollDice() {
+      if (isRolling || !gameStarted) return;
+      
+      isRolling = true;
+      const dice = document.getElementById('dice');
+      const rollBtn = document.getElementById('roll-btn');
+      const resultDiv = document.getElementById('dice-result');
+      
+      rollBtn.disabled = true;
+      dice.classList.add('animate-bounce-dice');
+      
+      // Rolling animation
+      let rolls = 0;
+      const maxRolls = 10;
+      const rollInterval = setInterval(() => {
+        const tempNum = Math.floor(Math.random() * 6) + 1;
+        const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        dice.textContent = diceEmojis[tempNum - 1];
+        rolls++;
+        
+        if (rolls >= maxRolls) {
+          clearInterval(rollInterval);
+          
+          const finalNum = Math.floor(Math.random() * 6) + 1;
+          dice.textContent = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][finalNum - 1];
+          resultDiv.textContent = `ได้ ${finalNum}!`;
+          
+          setTimeout(() => {
+            dice.classList.remove('animate-bounce-dice');
+            movePlayer(finalNum);
+          }, 300);
+        }
+      }, 100);
+    }
+
+    function movePlayer(steps) {
+      const player = players[currentPlayerIndex];
+      let newPosition = player.position + steps;
+      
+      if (newPosition > 25) {
+        newPosition = 25 - (newPosition - 25);
+      }
+      
+      player.position = newPosition;
+      updateTokenPositions();
+      updatePlayersStatus();
+      
+      setTimeout(() => {
+        // Check for win
+        if (newPosition === 25) {
+          showWinner();
+          return;
+        }
+        
+        // Check for special cells
+        if (ladders[newPosition] !== undefined || snakes[newPosition] !== undefined) {
+          showQuestion(newPosition);
+        } else {
+          nextTurn();
+        }
+      }, 500);
+    }
+
+    function showQuestion(position) {
+      const isLadder = ladders[position] !== undefined;
+      const question = questions[Math.floor(Math.random() * questions.length)];
+      
+      document.getElementById('question-icon').textContent = isLadder ? '🪜' : '🐍';
+      document.getElementById('question-text').textContent = question.q;
+      
+      const optionsContainer = document.getElementById('answer-options');
+      optionsContainer.innerHTML = '';
+      
+      question.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full py-3 px-4 bg-white/20 hover:bg-white/30 text-white font-medium rounded-xl transition-all text-left';
+        btn.textContent = `${['ก', 'ข', 'ค', 'ง'][idx]}. ${opt}`;
+        btn.onclick = () => checkAnswer(idx, question.correct, isLadder, position);
+        optionsContainer.appendChild(btn);
+      });
+      
+      document.getElementById('answer-result').classList.add('hidden');
+      document.getElementById('question-modal').classList.remove('hidden');
+    }
+
+    function checkAnswer(selected, correct, isLadder, position) {
+      const isCorrect = selected === correct;
+      const player = players[currentPlayerIndex];
+      const resultDiv = document.getElementById('answer-result');
+      
+      // Disable options
+      document.querySelectorAll('#answer-options button').forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      });
+      
+      if (isCorrect) {
+        if (isLadder) {
+          resultDiv.className = 'mt-4 p-4 rounded-xl text-center bg-green-500/30 border-2 border-green-400';
+          resultDiv.innerHTML = `
+            <span class="text-4xl">🎉</span>
+            <p class="text-white font-bold mt-2">ถูกต้อง! ขึ้นบันไดจาก ${position} ไป ${ladders[position]}</p>
+          `;
+          player.position = ladders[position];
+        } else {
+          resultDiv.className = 'mt-4 p-4 rounded-xl text-center bg-blue-500/30 border-2 border-blue-400';
+          resultDiv.innerHTML = `
+            <span class="text-4xl">😊</span>
+            <p class="text-white font-bold mt-2">ถูกต้อง! รอดจากงูแล้ว!</p>
+          `;
+        }
+      } else {
+        if (isLadder) {
+          resultDiv.className = 'mt-4 p-4 rounded-xl text-center bg-orange-500/30 border-2 border-orange-400';
+          resultDiv.innerHTML = `
+            <span class="text-4xl">😢</span>
+            <p class="text-white font-bold mt-2">ผิด! อดขึ้นบันได</p>
+          `;
+        } else {
+          resultDiv.className = 'mt-4 p-4 rounded-xl text-center bg-red-500/30 border-2 border-red-400';
+          resultDiv.innerHTML = `
+            <span class="text-4xl">🐍</span>
+            <p class="text-white font-bold mt-2">ผิด! โดนงูกัดตกจาก ${position} ไป ${snakes[position]}</p>
+          `;
+          player.position = snakes[position];
+        }
+      }
+      
+      resultDiv.classList.remove('hidden');
+      
+      setTimeout(() => {
+        document.getElementById('question-modal').classList.add('hidden');
+        updateTokenPositions();
+        updatePlayersStatus();
+        
+        if (player.position === 25) {
+          showWinner();
+        } else {
+          nextTurn();
+        }
+      }, 2000);
+    }
+
+    function nextTurn() {
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      updateCurrentPlayer();
+      updatePlayersStatus();
+      isRolling = false;
+      document.getElementById('roll-btn').disabled = false;
+      document.getElementById('dice-result').textContent = 'กดเพื่อทอยลูกเต๋า';
+    }
+
+    function showWinner() {
+      const winner = players[currentPlayerIndex];
+      document.getElementById('winner-text').textContent = `${winner.color.emoji} ${winner.name} ชนะ!`;
+      document.getElementById('win-message').textContent = config.win_message;
+      document.getElementById('winner-modal').classList.remove('hidden');
+      gameStarted = false;
+    }
+
+    function resetGame() {
+      document.getElementById('winner-modal').classList.add('hidden');
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-select').classList.remove('hidden');
+      players = [];
+      currentPlayerIndex = 0;
+      isRolling = false;
+      gameStarted = false;
+    }
+
+    // Initialize
+    updateUI();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d58ce73e4cace53',t:'MTc3MjM3NDg2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
